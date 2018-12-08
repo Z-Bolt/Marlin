@@ -12313,32 +12313,32 @@ inline void invalid_extruder_error(const uint8_t e) {
 #endif // DUAL_X_CARRIAGE
 
 #if ENABLED(PARKING_EXTRUDER)
+  #if defined PARKING_SCHEME && PARKING_SCHEME == 2
+    inline void parking_extruder_tool_change(const uint8_t tmp_extruder, bool no_move) {
+      if (no_move) return;
 
-  inline void parking_extruder_tool_change(const uint8_t tmp_extruder, bool no_move) {
-    constexpr float z_raise = PARKING_EXTRUDER_SECURITY_RAISE;
+      constexpr float z_raise = PARKING_EXTRUDER_SECURITY_RAISE;
+      const float parking_positions[][2] = PARKING_EXTRUDER_POSITION;
 
-    if (!no_move) {
-
-      const float parkingposx[] = PARKING_EXTRUDER_PARKING_X,
-                  midpos = (parkingposx[0] + parkingposx[1]) * 0.5 + hotend_offset[X_AXIS][active_extruder],
-                  grabpos = parkingposx[tmp_extruder] + hotend_offset[X_AXIS][active_extruder]
-                            + (tmp_extruder == 0 ? -(PARKING_EXTRUDER_GRAB_DISTANCE) : PARKING_EXTRUDER_GRAB_DISTANCE);
       /**
        *  Steps:
        *    1. Raise Z-Axis to give enough clearance
-       *    2. Move to park position of old extruder
-       *    3. Disengage magnetic field, wait for delay
-       *    4. Move near new extruder
-       *    5. Engage magnetic field for new extruder
-       *    6. Move to parking incl. offset of new extruder
-       *    7. Lower Z-Axis
+       *    2. Move to position near active extruder parking
+       *    3. Move gently to park position of active extruder
+       *    4. Disengage magnetic field, wait for delay
+       *    5. Leave extruder and move to position near new extruder parking
+       *    6. Move gently to park position of new extruder
+       *    7. Engage magnetic field for new extruder parking
+       *    8. Unpark extruder
+       *    9. Lower Z-Axis
        */
 
-      // STEP 1
       #if ENABLED(DEBUG_LEVELING_FEATURE)
         SERIAL_ECHOLNPGM("Starting Autopark");
         if (DEBUGGING(LEVELING)) DEBUG_POS("current position:", current_position);
       #endif
+
+      // STEP 1
       current_position[Z_AXIS] += z_raise;
       #if ENABLED(DEBUG_LEVELING_FEATURE)
         SERIAL_ECHOLNPGM("(1) Raise Z-Axis ");
@@ -12348,35 +12348,81 @@ inline void invalid_extruder_error(const uint8_t e) {
       planner.synchronize();
 
       // STEP 2
-      current_position[X_AXIS] = parkingposx[active_extruder] + hotend_offset[X_AXIS][active_extruder];
       #if ENABLED(DEBUG_LEVELING_FEATURE)
-        SERIAL_ECHOLNPAIR("(2) Park extruder ", active_extruder);
+        SERIAL_ECHOLNPAIR("(2) Move to position near active extruder parking", active_extruder);
         if (DEBUGGING(LEVELING)) DEBUG_POS("Moving ParkPos", current_position);
       #endif
+      current_position[X_AXIS] = parking_positions[active_extruder][X_AXIS];
+      current_position[Y_AXIS] = parking_positions[active_extruder][Y_AXIS];
+
+      if (PARKING_AXIS == Y_AXIS)
+        current_position[Y_AXIS] += PARKING_SAVE_DISTANCE;
+      else
+        current_position[X_AXIS] += PARKING_SAVE_DISTANCE;
+
       planner.buffer_line_kinematic(current_position, planner.max_feedrate_mm_s[X_AXIS], active_extruder);
       planner.synchronize();
 
       // STEP 3
       #if ENABLED(DEBUG_LEVELING_FEATURE)
-        SERIAL_ECHOLNPGM("(3) Disengage magnet ");
+        SERIAL_ECHOLNPAIR("(3) Move gently to park position of active extruder", active_extruder);
+        if (DEBUGGING(LEVELING)) DEBUG_POS("Moving ParkPos", current_position);
       #endif
-      pe_deactivate_magnet(active_extruder);
+      if (PARKING_AXIS == Y_AXIS)
+        current_position[Y_AXIS] -= PARKING_SAVE_DISTANCE;
+      else
+        current_position[X_AXIS] -= PARKING_SAVE_DISTANCE;
+
+      planner.buffer_line_kinematic(current_position, planner.max_feedrate_mm_s[Y_AXIS], active_extruder);
+      planner.synchronize();
 
       // STEP 4
       #if ENABLED(DEBUG_LEVELING_FEATURE)
-        SERIAL_ECHOLNPGM("(4) Move to position near new extruder");
+        SERIAL_ECHOLNPGM("(4) Disengage magnet ");
       #endif
-      current_position[X_AXIS] += (active_extruder == 0 ? 10 : -10); // move 10mm away from parked extruder
-
-      #if ENABLED(DEBUG_LEVELING_FEATURE)
-        if (DEBUGGING(LEVELING)) DEBUG_POS("Moving away from parked extruder", current_position);
-      #endif
-      planner.buffer_line_kinematic(current_position, planner.max_feedrate_mm_s[X_AXIS], active_extruder);
-      planner.synchronize();
+      pe_deactivate_magnet(active_extruder);
 
       // STEP 5
       #if ENABLED(DEBUG_LEVELING_FEATURE)
-        SERIAL_ECHOLNPGM("(5) Engage magnetic field");
+        SERIAL_ECHOLNPGM("(5) Move to position near new extruder parking");
+        if (DEBUGGING(LEVELING)) DEBUG_POS("Moving ParkPos", current_position);
+      #endif
+
+      if (PARKING_AXIS == Y_AXIS)
+        current_position[Y_AXIS] += PARKING_SAVE_DISTANCE;
+      else
+        current_position[X_AXIS] += PARKING_SAVE_DISTANCE;
+
+      planner.buffer_line_kinematic(current_position, planner.max_feedrate_mm_s[Y_AXIS], active_extruder);
+      planner.synchronize();
+
+      current_position[X_AXIS] = parking_positions[tmp_extruder][X_AXIS];
+      current_position[Y_AXIS] = parking_positions[tmp_extruder][Y_AXIS];
+
+      if (PARKING_AXIS == Y_AXIS)
+        current_position[Y_AXIS] += PARKING_SAVE_DISTANCE;
+      else
+        current_position[X_AXIS] += PARKING_SAVE_DISTANCE;
+
+      planner.buffer_line_kinematic(current_position, planner.max_feedrate_mm_s[X_AXIS], active_extruder);
+      planner.synchronize();
+
+      // STEP 6
+      #if ENABLED(DEBUG_LEVELING_FEATURE)
+        SERIAL_ECHOLNPGM("(6) Move to position near new extruder");
+      #endif
+
+      if (PARKING_AXIS == Y_AXIS)
+        current_position[Y_AXIS] -= PARKING_SAVE_DISTANCE;
+      else
+        current_position[X_AXIS] -= PARKING_SAVE_DISTANCE;
+
+      planner.buffer_line_kinematic(current_position, planner.max_feedrate_mm_s[Y_AXIS], active_extruder);
+      planner.synchronize();
+
+      // STEP 7
+      #if ENABLED(DEBUG_LEVELING_FEATURE)
+        SERIAL_ECHOLNPGM("(7) Engage magnetic field");
       #endif
 
       #if ENABLED(PARKING_EXTRUDER_SOLENOIDS_INVERT)
@@ -12384,43 +12430,135 @@ inline void invalid_extruder_error(const uint8_t e) {
       #endif
       pe_activate_magnet(tmp_extruder);
 
-      // STEP 6
-      current_position[X_AXIS] = grabpos + (tmp_extruder == 0 ? (+10) : (-10));
-      planner.buffer_line_kinematic(current_position, planner.max_feedrate_mm_s[X_AXIS], active_extruder);
-      current_position[X_AXIS] = grabpos;
+
+      // STEP 8
       #if ENABLED(DEBUG_LEVELING_FEATURE)
-        SERIAL_ECHOLNPAIR("(6) Unpark extruder ", tmp_extruder);
-        if (DEBUGGING(LEVELING)) DEBUG_POS("Move UnparkPos", current_position);
+          SERIAL_ECHOLNPGM("(8) Unpark extruder");
       #endif
-      planner.buffer_line_kinematic(current_position, planner.max_feedrate_mm_s[X_AXIS]/2, active_extruder);
+
+      if (PARKING_AXIS == Y_AXIS)
+        current_position[Y_AXIS] += PARKING_SAVE_DISTANCE;
+      else
+        current_position[X_AXIS] += PARKING_SAVE_DISTANCE;
+
+      planner.buffer_line_kinematic(current_position, planner.max_feedrate_mm_s[X_AXIS]*0.5, active_extruder);
       planner.synchronize();
 
-      // Step 7
-      current_position[X_AXIS] = midpos - hotend_offset[X_AXIS][tmp_extruder];
+      current_position[Z_AXIS] += hotend_offset[Z_AXIS][active_extruder] - hotend_offset[Z_AXIS][tmp_extruder];
+
       #if ENABLED(DEBUG_LEVELING_FEATURE)
-        SERIAL_ECHOLNPGM("(7) Move midway between hotends");
-        if (DEBUGGING(LEVELING)) DEBUG_POS("Move midway to new extruder", current_position);
-      #endif
-      planner.buffer_line_kinematic(current_position, planner.max_feedrate_mm_s[X_AXIS], active_extruder);
-      planner.synchronize();
-      #if ENABLED(DEBUG_LEVELING_FEATURE)
-        SERIAL_ECHOLNPGM("Autopark done.");
+        if (DEBUGGING(LEVELING)) DEBUG_POS("(9) Applying Z-offset", current_position);
       #endif
     }
-    else { // nomove == true
-      // Only engage magnetic field for new extruder
-      pe_activate_magnet(tmp_extruder);
-      #if ENABLED(PARKING_EXTRUDER_SOLENOIDS_INVERT)
-        pe_activate_magnet(active_extruder); // Just save power for inverted magnets
+  #else // PARKING_SCHEME
+    inline void parking_extruder_tool_change(const uint8_t tmp_extruder, bool no_move) {
+      constexpr float z_raise = PARKING_EXTRUDER_SECURITY_RAISE;
+
+      if (!no_move) {
+
+        const float parkingposx[] = PARKING_EXTRUDER_PARKING_X,
+                    midpos = (parkingposx[0] + parkingposx[1]) * 0.5 + hotend_offset[X_AXIS][active_extruder],
+                    grabpos = parkingposx[tmp_extruder] + hotend_offset[X_AXIS][active_extruder]
+                              + (tmp_extruder == 0 ? -(PARKING_EXTRUDER_GRAB_DISTANCE) : PARKING_EXTRUDER_GRAB_DISTANCE);
+        /**
+         *  Steps:
+         *    1. Raise Z-Axis to give enough clearance
+         *    2. Move to park position of old extruder
+         *    3. Disengage magnetic field, wait for delay
+         *    4. Move near new extruder
+         *    5. Engage magnetic field for new extruder
+         *    6. Move to parking incl. offset of new extruder
+         *    7. Lower Z-Axis
+         */
+
+        // STEP 1
+        #if ENABLED(DEBUG_LEVELING_FEATURE)
+          SERIAL_ECHOLNPGM("Starting Autopark");
+          if (DEBUGGING(LEVELING)) DEBUG_POS("current position:", current_position);
+        #endif
+        current_position[Z_AXIS] += z_raise;
+        #if ENABLED(DEBUG_LEVELING_FEATURE)
+          SERIAL_ECHOLNPGM("(1) Raise Z-Axis ");
+          if (DEBUGGING(LEVELING)) DEBUG_POS("Moving to Raised Z-Position", current_position);
+        #endif
+        planner.buffer_line_kinematic(current_position, planner.max_feedrate_mm_s[Z_AXIS], active_extruder);
+        planner.synchronize();
+
+        // STEP 2
+        current_position[X_AXIS] = parkingposx[active_extruder] + hotend_offset[X_AXIS][active_extruder];
+        #if ENABLED(DEBUG_LEVELING_FEATURE)
+          SERIAL_ECHOLNPAIR("(2) Park extruder ", active_extruder);
+          if (DEBUGGING(LEVELING)) DEBUG_POS("Moving ParkPos", current_position);
+        #endif
+        planner.buffer_line_kinematic(current_position, planner.max_feedrate_mm_s[X_AXIS], active_extruder);
+        planner.synchronize();
+
+        // STEP 3
+        #if ENABLED(DEBUG_LEVELING_FEATURE)
+          SERIAL_ECHOLNPGM("(3) Disengage magnet ");
+        #endif
+        pe_deactivate_magnet(active_extruder);
+
+        // STEP 4
+        #if ENABLED(DEBUG_LEVELING_FEATURE)
+          SERIAL_ECHOLNPGM("(4) Move to position near new extruder");
+        #endif
+        current_position[X_AXIS] += (active_extruder == 0 ? 10 : -10); // move 10mm away from parked extruder
+
+        #if ENABLED(DEBUG_LEVELING_FEATURE)
+          if (DEBUGGING(LEVELING)) DEBUG_POS("Moving away from parked extruder", current_position);
+        #endif
+        planner.buffer_line_kinematic(current_position, planner.max_feedrate_mm_s[X_AXIS], active_extruder);
+        planner.synchronize();
+
+        // STEP 5
+        #if ENABLED(DEBUG_LEVELING_FEATURE)
+          SERIAL_ECHOLNPGM("(5) Engage magnetic field");
+        #endif
+
+        #if ENABLED(PARKING_EXTRUDER_SOLENOIDS_INVERT)
+          pe_activate_magnet(active_extruder); //just save power for inverted magnets
+        #endif
+        pe_activate_magnet(tmp_extruder);
+
+        // STEP 6
+        current_position[X_AXIS] = grabpos + (tmp_extruder == 0 ? (+10) : (-10));
+        planner.buffer_line_kinematic(current_position, planner.max_feedrate_mm_s[X_AXIS], active_extruder);
+        current_position[X_AXIS] = grabpos;
+        #if ENABLED(DEBUG_LEVELING_FEATURE)
+          SERIAL_ECHOLNPAIR("(6) Unpark extruder ", tmp_extruder);
+          if (DEBUGGING(LEVELING)) DEBUG_POS("Move UnparkPos", current_position);
+        #endif
+        planner.buffer_line_kinematic(current_position, planner.max_feedrate_mm_s[X_AXIS]/2, active_extruder);
+        planner.synchronize();
+
+        // Step 7
+        current_position[X_AXIS] = midpos - hotend_offset[X_AXIS][tmp_extruder];
+        #if ENABLED(DEBUG_LEVELING_FEATURE)
+          SERIAL_ECHOLNPGM("(7) Move midway between hotends");
+          if (DEBUGGING(LEVELING)) DEBUG_POS("Move midway to new extruder", current_position);
+        #endif
+        planner.buffer_line_kinematic(current_position, planner.max_feedrate_mm_s[X_AXIS], active_extruder);
+        planner.synchronize();
+        #if ENABLED(DEBUG_LEVELING_FEATURE)
+          SERIAL_ECHOLNPGM("Autopark done.");
+        #endif
+      }
+      else { // nomove == true
+        // Only engage magnetic field for new extruder
+        pe_activate_magnet(tmp_extruder);
+        #if ENABLED(PARKING_EXTRUDER_SOLENOIDS_INVERT)
+          pe_activate_magnet(active_extruder); // Just save power for inverted magnets
+        #endif
+      }
+      current_position[Z_AXIS] += hotend_offset[Z_AXIS][active_extruder] - hotend_offset[Z_AXIS][tmp_extruder];
+
+      #if ENABLED(DEBUG_LEVELING_FEATURE)
+        if (DEBUGGING(LEVELING)) DEBUG_POS("Applying Z-offset", current_position);
       #endif
     }
-    current_position[Z_AXIS] += hotend_offset[Z_AXIS][active_extruder] - hotend_offset[Z_AXIS][tmp_extruder];
 
-    #if ENABLED(DEBUG_LEVELING_FEATURE)
-      if (DEBUGGING(LEVELING)) DEBUG_POS("Applying Z-offset", current_position);
-    #endif
-  }
-
+  #endif // PARKING_SCHEME
 #endif // PARKING_EXTRUDER
 
 /**
