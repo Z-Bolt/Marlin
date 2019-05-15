@@ -272,6 +272,25 @@
   #endif
 #endif
 
+
+/**
+ * Printing heads parking algorithm applicable for CoreXY or HBot kinematics.
+ * It implies location of all printing heads on the one side of the 
+ * printer and their fixation with electromagnet.
+ * This scheme was developed for more than 2 printing heads.
+ * 
+ * Please find example here: https://youtu.be/JolbsAKTKf4
+ */
+
+//#define MAGNETIC_TOOLCHANGER
+
+#if ENABLED(MAGNETIC_TOOLCHANGER)
+  #define MAGNETIC_TOOLCHANGER_Y_POS          -36         // (mm) Y position of the toolhead dock
+  #define MAGNETIC_TOOLCHANGER_GRAB_DISTANCE   30         // (mm) Grab distance Y axis
+  #define MAGNETIC_TOOLCHANGER_Z_HOP            2
+  #define MAGNETIC_TOOLCHANGER_X_POS          { 10, 90, 160}  // (mm) X positions for parking the extruders
+#endif
+
 /**
  * "Mixing Extruder"
  *   - Adds G-codes M163 and M164 to set and "commit" the current mix factors.

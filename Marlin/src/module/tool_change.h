@@ -92,6 +92,14 @@
   #endif
 #endif
 
+
+#if ENABLED(MAGNETIC_TOOLCHANGER)
+  void mtc_init();
+  void mtc_activate_solenoid();
+  void mtc_deactivate_solenoid();
+  inline void marnetic_tool_change(const uint8_t, bool);
+#endif
+
 /**
  * Perform a tool-change, which may result in moving the
  * previous tool out of the way and the new tool into place.

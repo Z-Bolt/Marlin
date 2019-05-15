@@ -157,7 +157,7 @@
   #include "feature/fanmux.h"
 #endif
 
-#if DO_SWITCH_EXTRUDER || ANY(SWITCHING_NOZZLE, PARKING_EXTRUDER, MAGNETIC_PARKING_EXTRUDER)
+#if DO_SWITCH_EXTRUDER || ANY(SWITCHING_NOZZLE, PARKING_EXTRUDER, MAGNETIC_PARKING_EXTRUDER, MAGNETIC_TOOLCHANGER)
   #include "module/tool_change.h"
 #endif
 
@@ -1090,6 +1090,10 @@ void setup() {
 
   #if ENABLED(PARKING_EXTRUDER)
     pe_solenoid_init();
+  #endif
+
+  #if ENABLED(MAGNETIC_TOOLCHANGER)
+    mtc_init();
   #endif
 
   #if ENABLED(POWER_LOSS_RECOVERY)

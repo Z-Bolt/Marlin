@@ -886,6 +886,30 @@ static_assert(Y_MAX_LENGTH >= Y_BED_SIZE, "Movement bounds (Y_MIN_POS, Y_MAX_POS
   #endif
 #endif
 
+#if ENABLED(MAGNETIC_TOOLCHANGER)
+  #if ENABLED(DUAL_X_CARRIAGE)
+    #error "MAGNETIC_TOOLCHANGER and DUAL_X_CARRIAGE are incompatible."
+  #elif ENABLED(PARKING_EXTRUDER)
+    #error "MAGNETIC_TOOLCHANGER and PARKING_EXTRUDER are incompatible."
+  #elif ENABLED(SINGLENOZZLE)
+    #error "MAGNETIC_TOOLCHANGER and SINGLENOZZLE are incompatible."
+  #elif ENABLED(EXT_SOLENOID)
+    #error "MAGNETIC_TOOLCHANGER and EXT_SOLENOID are incompatible. (Pins are used twice.)"
+  #elif ENABLED(MAGNETIC_PARKING_EXTRUDER)
+    #error "MAGNETIC_TOOLCHANGER and MAGNETIC_PARKING_EXTRUDER are incompatible."
+  #elif !PIN_EXISTS(SOL0)
+    #error "MAGNETIC_TOOLCHANGER requires SOL0_PIN."
+  #elif !defined(MAGNETIC_TOOLCHANGER_Y_POS)
+    #error "MAGNETIC_TOOLCHANGER requires MAGNETIC_TOOLCHANGER_Y_POS"
+  #elif !defined(MAGNETIC_TOOLCHANGER_X_POS)
+    #error "MAGNETIC_TOOLCHANGER requires MAGNETIC_TOOLCHANGER_X_POS"
+  #elif !defined(MAGNETIC_TOOLCHANGER_Z_HOP)
+    #error "MAGNETIC_TOOLCHANGER requires MAGNETIC_TOOLCHANGER_Z_HOP."
+  #elif !defined(MAGNETIC_TOOLCHANGER_GRAB_DISTANCE)
+    #error "MAGNETIC_TOOLCHANGER requires MAGNETIC_TOOLCHANGER_GRAB_DISTANCE."
+  #endif
+#endif
+
 /**
  * Part-Cooling Fan Multiplexer requirements
  */
