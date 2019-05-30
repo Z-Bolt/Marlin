@@ -637,8 +637,9 @@ inline void fast_line_to_current(const AxisEnum fr_axis) {
       SERIAL_ECHOLNPAIR("(2) Move to position near active extruder parking", active_extruder);
       if (DEBUGGING(LEVELING)) DEBUG_POS("Moving ParkPos", current_position);
     #endif
-    current_position[X_AXIS] = parking_positions[active_extruder];
-    current_position[Y_AXIS] = MAGNETIC_TOOLCHANGER_Y_POS + MAGNETIC_TOOLCHANGER_GRAB_DISTANCE;
+    current_position[X_AXIS] = parking_positions[active_extruder] + hotend_offset[X_AXIS][active_extruder];
+    current_position[Y_AXIS] = MAGNETIC_TOOLCHANGER_Y_POS + MAGNETIC_TOOLCHANGER_GRAB_DISTANCE + hotend_offset[Y_AXIS][active_extruder];
+
 
     planner.buffer_line(current_position, planner.settings.max_feedrate_mm_s[X_AXIS], active_extruder);
     planner.synchronize();
@@ -651,7 +652,7 @@ inline void fast_line_to_current(const AxisEnum fr_axis) {
 
     current_position[Y_AXIS] -= MAGNETIC_TOOLCHANGER_GRAB_DISTANCE;
 
-    planner.buffer_line(current_position, planner.settings.max_feedrate_mm_s[Y_AXIS], active_extruder);
+    planner.buffer_line(current_position, planner.settings.max_feedrate_mm_s[Y_AXIS] * 0.5, active_extruder);
     planner.synchronize();
 
     // STEP 4
@@ -668,11 +669,11 @@ inline void fast_line_to_current(const AxisEnum fr_axis) {
 
     current_position[Y_AXIS] += MAGNETIC_TOOLCHANGER_GRAB_DISTANCE;
 
-    planner.buffer_line(current_position, planner.settings.max_feedrate_mm_s[Y_AXIS], active_extruder);
+    planner.buffer_line(current_position, planner.settings.max_feedrate_mm_s[Y_AXIS] * 0.5, active_extruder);
     planner.synchronize();
 
-    current_position[X_AXIS] = parking_positions[tmp_extruder];
-    current_position[Y_AXIS] = MAGNETIC_TOOLCHANGER_Y_POS + MAGNETIC_TOOLCHANGER_GRAB_DISTANCE;
+    current_position[X_AXIS] = parking_positions[tmp_extruder] + hotend_offset[X_AXIS][active_extruder];
+    current_position[Y_AXIS] = MAGNETIC_TOOLCHANGER_Y_POS + MAGNETIC_TOOLCHANGER_GRAB_DISTANCE + hotend_offset[Y_AXIS][active_extruder];
 
     planner.buffer_line(current_position, planner.settings.max_feedrate_mm_s[X_AXIS], active_extruder);
     planner.synchronize();
@@ -684,7 +685,7 @@ inline void fast_line_to_current(const AxisEnum fr_axis) {
 
     current_position[Y_AXIS] -= MAGNETIC_TOOLCHANGER_GRAB_DISTANCE;
 
-    planner.buffer_line(current_position, planner.settings.max_feedrate_mm_s[Y_AXIS], active_extruder);
+    planner.buffer_line(current_position, planner.settings.max_feedrate_mm_s[Y_AXIS] * 0.5, active_extruder);
     planner.synchronize();
 
     // STEP 7
@@ -701,10 +702,12 @@ inline void fast_line_to_current(const AxisEnum fr_axis) {
 
     current_position[Y_AXIS] += MAGNETIC_TOOLCHANGER_GRAB_DISTANCE;
 
-    planner.buffer_line(current_position, planner.settings.max_feedrate_mm_s[X_AXIS]*0.5, active_extruder);
+    planner.buffer_line(current_position, planner.settings.max_feedrate_mm_s[X_AXIS] * 0.5, active_extruder);
     planner.synchronize();
 
     current_position[Z_AXIS] += hotend_offset[Z_AXIS][active_extruder] - hotend_offset[Z_AXIS][tmp_extruder];
+    // current_position[X_AXIS] -= hotend_offset[X_AXIS][tmp_extruder];
+    // current_position[Y_AXIS] -= hotend_offset[Y_AXIS][active_extruder];
 
     #if ENABLED(DEBUG_LEVELING_FEATURE)
       if (DEBUGGING(LEVELING)) DEBUG_POS("(9) Applying Z-offset", current_position);
